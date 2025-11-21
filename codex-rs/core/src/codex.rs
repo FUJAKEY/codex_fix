@@ -34,6 +34,7 @@ use codex_protocol::protocol::SessionSource;
 use codex_protocol::protocol::TaskStartedEvent;
 use codex_protocol::protocol::TurnAbortReason;
 use codex_protocol::protocol::TurnContextItem;
+use codex_rmcp_client::ElicitationResponse;
 use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::stream::FuturesOrdered;
@@ -44,6 +45,7 @@ use mcp_types::ListResourcesRequestParams;
 use mcp_types::ListResourcesResult;
 use mcp_types::ReadResourceRequestParams;
 use mcp_types::ReadResourceResult;
+use mcp_types::RequestId;
 use serde_json;
 use serde_json::Value;
 use tokio::sync::Mutex;
@@ -941,6 +943,19 @@ impl Session {
         }
     }
 
+    pub async fn resolve_elicitation(
+        &self,
+        server_name: String,
+        id: RequestId,
+        response: ElicitationResponse,
+    ) -> anyhow::Result<()> {
+        self.services
+            .mcp_connection_manager
+            .read()
+            .await
+            .resolve_elicitation(server_name, id, response)
+    }
+
     /// Records input items: always append to conversation history and
     /// persist these response items to rollout.
     pub(crate) async fn record_conversation_items(
@@ -1414,6 +1429,13 @@ async fn submission_loop(sess: Arc<Session>, config: Arc<Config>, rx_sub: Receiv
                 )
                 .await;
             }
+            Op::ResolveElicitation {
+                server_name,
+                request_id,
+                decision,
+            } => {
+                handlers::resolve_elicitation(&sess, server_name, request_id, decision).await;
+            }
             Op::Shutdown => {
                 if handlers::shutdown(&sess, sub.id.clone()).await {
                     break;
@@ -1441,6 +1463,7 @@ mod handlers {
     use crate::tasks::RegularTask;
     use crate::tasks::UndoTask;
     use crate::tasks::UserShellCommandTask;
+    use codex_protocol::approvals::ElicitationDecision;
     use codex_protocol::custom_prompts::CustomPrompt;
     use codex_protocol::protocol::CodexErrorInfo;
     use codex_protocol::protocol::ErrorEvent;
@@ -1453,6 +1476,9 @@ mod handlers {
     use codex_protocol::protocol::TurnAbortReason;
 
     use codex_protocol::user_input::UserInput;
+    use codex_rmcp_client::ElicitationAction;
+    use codex_rmcp_client::ElicitationResponse;
+    use mcp_types::RequestId;
     use std::sync::Arc;
     use tracing::info;
     use tracing::warn;
@@ -1534,6 +1560,32 @@ mod handlers {
         )
         .await;
         *previous_context = Some(turn_context);
+    }
+
+    pub async fn resolve_elicitation(
+        sess: &Arc<Session>,
+        server_name: String,
+        request_id: RequestId,
+        decision: ElicitationDecision,
+    ) {
+        let action = match decision {
+            ElicitationDecision::Accept => ElicitationAction::Accept,
+            ElicitationDecision::Decline => ElicitationAction::Decline,
+            ElicitationDecision::Cancel => ElicitationAction::Cancel,
+        };
+        let response = ElicitationResponse {
+            action,
+            content: None,
+        };
+        if let Err(err) = sess
+            .resolve_elicitation(server_name, request_id, response)
+            .await
+        {
+            warn!(
+                error = %err,
+                "failed to resolve elicitation request in session"
+            );
+        }
     }
 
     pub async fn exec_approval(sess: &Arc<Session>, id: String, decision: ReviewDecision) {
