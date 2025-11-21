@@ -138,3 +138,36 @@ Pass multiple `--policy` flags to test how several files combine, and use `--pre
 ## License
 
 This repository is licensed under the [Apache-2.0 License](LICENSE).
+
+## Publishing the Codex binary to npm
+
+The `Build Codex binary` workflow now uploads artifacts for both `x86_64-unknown-linux-gnu` (`codex-linux-x64.tar.gz`) and `aarch64-unknown-linux-gnu` (`codex-linux-aarch64.tar.gz`). Publish the one that matches your target environment as a binary npm package (`<archive>`/`<arch>` should be `codex-linux-x64.tar.gz`/`x64` or `codex-linux-aarch64.tar.gz`/`aarch64`):
+
+1. Unpack the archived binary and prepare a minimal package layout (replace `<archive>` with the downloaded artifact):
+   ```bash
+   tar -xzf <archive>
+   mkdir -p codex-npm && cd codex-npm
+   mv ../codex ./codex
+   cat > package.json <<'EOF'
+   {
+     "name": "codex-binary-linux-<arch>",
+     "version": "1.0.0",
+     "bin": {
+       "codex": "codex"
+     }
+   }
+   EOF
+   chmod +x codex
+   ```
+2. Create a tarball and publish it to npm (the archive name will reflect the chosen architecture):
+   ```bash
+   npm pack
+   npm publish --access public codex-binary-linux-<arch>-*.tgz
+   ```
+3. Install the published binary on any machine with npm and run Codex:
+   ```bash
+   npm install -g codex-binary-linux-<arch>
+   codex
+   ```
+
+This flow keeps the release artifacts small while making the compiled `codex` binaries available through npm for both x64 and aarch64 Linux systems.
