@@ -1,0 +1,83 @@
+name: Build Codex binaries
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            artifact: codex-linux-x64
+          - target: aarch64-unknown-linux-gnu
+            artifact: codex-linux-arm64
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+    defaults:
+      run:
+        shell: bash
+        working-directory: codex-rs
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            codex-rs -> target/${{ matrix.target }}
+
+      - name: Install aarch64 build dependencies
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-user-static \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            libssl-dev:arm64 \
+            pkg-config
+          {
+            echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig";
+            echo "PKG_CONFIG_ALLOW_CROSS=1";
+          } >> "$GITHUB_ENV"
+
+      - name: Install cross for non-native targets
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Build codex release binary
+        run: |
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            cross build --release --target ${{ matrix.target }} -p codex-cli
+          else
+            cargo build --release --target ${{ matrix.target }} -p codex-cli
+          fi
+
+      - name: Package binary for npm
+        run: |
+          mkdir -p ../artifacts/${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/codex ../artifacts/${{ matrix.target }}/
+          tar -czf ../${{ matrix.artifact }}.tar.gz -C ../artifacts/${{ matrix.target }} codex
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.tar.gz
+          if-no-files-found: error
