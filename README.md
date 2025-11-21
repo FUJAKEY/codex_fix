@@ -141,20 +141,27 @@ This repository is licensed under the [Apache-2.0 License](LICENSE).
 
 ## Publishing the Codex binary to npm
 
-After the `Build Codex binary` workflow finishes, download the `codex-linux-x64` artifact and publish it as a binary npm package:
+After the `Build Codex binaries` workflow finishes, download the artifacts that match the platforms you want to support:
 
-1. Unpack the archived binary and prepare a minimal package layout:
+- `codex-linux-x64.tar.gz` → x86_64 Linux
+- `codex-linux-arm64.tar.gz` → aarch64/arm64 Linux
+
+For each architecture you plan to ship, publish a dedicated npm package:
+
+1. Unpack the archived binary and prepare a minimal package layout (replace `linux-x64` with `linux-arm64` when needed):
    ```bash
-   tar -xzf codex-linux-x64.tar.gz
-   mkdir -p codex-npm && cd codex-npm
+   ARCH=linux-x64   # or linux-arm64
+
+   tar -xzf codex-${ARCH}.tar.gz
+   mkdir -p codex-npm-${ARCH} && cd codex-npm-${ARCH}
    mv ../codex ./codex
    cat > package.json <<'EOF'
    {
-     "name": "codex-binary",
+     "name": "codex-binary-${ARCH}",
      "version": "1.0.0",
-     "bin": {
-       "codex": "codex"
-     }
+     "bin": { "codex": "codex" },
+     "os": ["linux"],
+     "cpu": ["${ARCH#linux-}"]
    }
    EOF
    chmod +x codex
@@ -162,12 +169,12 @@ After the `Build Codex binary` workflow finishes, download the `codex-linux-x64`
 2. Create a tarball and publish it to npm:
    ```bash
    npm pack
-   npm publish --access public codex-binary-*.tgz
+   npm publish --access public codex-binary-${ARCH}-*.tgz
    ```
-3. Install the published binary on any machine with npm and run Codex:
+3. Install the published binary on any machine with npm and run Codex (choose the package that matches the target CPU):
    ```bash
-   npm install -g codex-binary
-   codex
+   npm install -g codex-binary-linux-x64   # or codex-binary-linux-arm64
+   codex --help
    ```
 
-This flow keeps the release artifact small while making the compiled `codex` binary available through npm for easy installation.
+This flow keeps each release artifact small while making the compiled `codex` binary available through npm for easy installation on both x86_64 and arm64 Linux hosts.
