@@ -86,6 +86,8 @@ impl EscalateServer {
                 with_escalated_permissions: None,
                 justification: None,
                 arg0: None,
+                max_output_tokens: None,
+                max_output_chars: None,
             },
             get_platform_sandbox().unwrap_or(SandboxType::None),
             &sandbox_policy,
