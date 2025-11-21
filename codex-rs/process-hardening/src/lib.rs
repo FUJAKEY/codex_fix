@@ -38,11 +38,21 @@ pub(crate) fn pre_main_hardening_linux() {
     // Disable ptrace attach / mark process non-dumpable.
     let ret_code = unsafe { libc::prctl(libc::PR_SET_DUMPABLE, 0, 0, 0, 0) };
     if ret_code != 0 {
-        eprintln!(
-            "ERROR: prctl(PR_SET_DUMPABLE, 0) failed: {}",
-            std::io::Error::last_os_error()
-        );
-        std::process::exit(PRCTL_FAILED_EXIT_CODE);
+        let error = std::io::Error::last_os_error();
+        let raw_error = error.raw_os_error();
+
+        if matches!(
+            raw_error,
+            Some(libc::EPERM) | Some(libc::EINVAL) | Some(libc::ENOSYS) | None
+        ) {
+            eprintln!(
+                "WARNING: prctl(PR_SET_DUMPABLE, 0) failed in this environment \
+                 (ret_code={ret_code}): {error}; continuing without disabling ptrace attach."
+            );
+        } else {
+            eprintln!("ERROR: prctl(PR_SET_DUMPABLE, 0) failed: {error}");
+            std::process::exit(PRCTL_FAILED_EXIT_CODE);
+        }
     }
 
     // For "defense in depth," set the core file size limit to 0.
