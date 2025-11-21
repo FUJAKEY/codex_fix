@@ -561,3 +561,15 @@ Have you discovered a vulnerability or have concerns about model output? Please 
 ## License
 
 This repository is licensed under the [Apache-2.0 License](LICENSE).
+
+## Установка из GitHub через npm после вашего коммита
+
+После того как изменения закоммичены и доступны на GitHub, CLI можно стянуть напрямую из репозитория без публикации в реестр:
+
+1. Убедитесь, что установлен Node.js версии не ниже 22 (иначе npm выведет предупреждение об `engine`).
+2. Клонируйте репозиторий: `git clone https://github.com/FUJAKEY/codex_fix.git`.
+3. Перейдите в подкаталог CLI: `cd codex_fix/codex-cli`.
+4. Установите зависимости: `npm install` (или `pnpm install`, если используете corepack).
+5. Установите CLI глобально из каталога: `npm install -g .`.
+
+Если хотите добавить CLI как зависимость в конкретный проект, выполните из корня этого проекта `npm install ../codex_fix/codex-cli` (путь скорректируйте под своё расположение). Команда успешно ставится с GitHub-клоном, поэтому после коммита достаточно обновить локальную копию и повторить установку.
