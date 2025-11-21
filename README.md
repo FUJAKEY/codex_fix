@@ -138,3 +138,36 @@ Pass multiple `--policy` flags to test how several files combine, and use `--pre
 ## License
 
 This repository is licensed under the [Apache-2.0 License](LICENSE).
+
+## Publishing the Codex binary to npm
+
+After the `Build Codex binary` workflow finishes, download the `codex-linux-x64` artifact and publish it as a binary npm package:
+
+1. Unpack the archived binary and prepare a minimal package layout:
+   ```bash
+   tar -xzf codex-linux-x64.tar.gz
+   mkdir -p codex-npm && cd codex-npm
+   mv ../codex ./codex
+   cat > package.json <<'EOF'
+   {
+     "name": "codex-binary",
+     "version": "1.0.0",
+     "bin": {
+       "codex": "codex"
+     }
+   }
+   EOF
+   chmod +x codex
+   ```
+2. Create a tarball and publish it to npm:
+   ```bash
+   npm pack
+   npm publish --access public codex-binary-*.tgz
+   ```
+3. Install the published binary on any machine with npm and run Codex:
+   ```bash
+   npm install -g codex-binary
+   codex
+   ```
+
+This flow keeps the release artifact small while making the compiled `codex` binary available through npm for easy installation.

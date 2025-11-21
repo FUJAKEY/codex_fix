@@ -1,0 +1,45 @@
+name: Build Codex binary
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+    defaults:
+      run:
+        shell: bash
+        working-directory: codex-rs
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            codex-rs -> target
+
+      - name: Build codex release binary
+        run: cargo build --release -p codex-cli
+
+      - name: Package binary for npm
+        run: |
+          mkdir -p ../artifacts
+          cp target/release/codex ../artifacts/
+          tar -czf ../codex-linux-x64.tar.gz -C ../artifacts codex
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-linux-x64
+          path: codex-linux-x64.tar.gz
+          if-no-files-found: error
