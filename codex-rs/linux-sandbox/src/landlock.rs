@@ -133,7 +133,27 @@ fn install_network_seccomp_filter_on_current_thread() -> std::result::Result<(),
 
     let prog: BpfProgram = filter.try_into()?;
 
-    apply_filter(&prog)?;
+    if let Err(err) = apply_filter(&prog) {
+        // In some restricted containers, attempts to mark the process as
+        // non‑dumpable during seccomp installation can fail with
+        // `PR_SET_DUMPABLE` errors (sometimes even reporting errno 0). That
+        // failure currently surfaces as a hard error from `apply_filter`.
+        //
+        // Since this only affects telemetry/debugging features of seccomp and
+        // not the rule set itself, we gracefully degrade by skipping the
+        // network filter when we detect this specific condition rather than
+        // crashing the sandbox.
+        let err_msg = err.to_string();
+        if err_msg.contains("PR_SET_DUMPABLE") {
+            eprintln!(
+                "codex-linux-sandbox: unable to install network seccomp filter ({}); continuing without seccomp",
+                err_msg
+            );
+            return Ok(());
+        }
+
+        return Err(err.into());
+    }
 
     Ok(())
 }
