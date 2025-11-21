@@ -11,7 +11,6 @@ use uuid::Uuid;
 
 use crate::codex::TurnContext;
 use crate::exec::ExecToolCallOutput;
-use crate::exec::SandboxType;
 use crate::exec::StdoutStream;
 use crate::exec::StreamOutput;
 use crate::exec::execute_exec_env;
@@ -96,7 +95,7 @@ impl SessionTask for UserShellCommandTask {
             cwd: cwd.clone(),
             env: create_env(&turn_context.shell_environment_policy),
             timeout_ms: Some(USER_SHELL_TIMEOUT_MS),
-            sandbox: SandboxType::None,
+            sandboxed: false,
             with_escalated_permissions: None,
             justification: None,
             arg0: None,
