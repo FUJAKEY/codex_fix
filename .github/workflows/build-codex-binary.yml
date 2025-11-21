@@ -42,15 +42,13 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo dpkg --add-architecture arm64
-          sudo rm -f /etc/apt/sources.list.d/ubuntu.sources
-          cat <<'EOF' | sudo tee /etc/apt/sources.list
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu noble main restricted universe multiverse
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse
-          deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu noble-backports main restricted universe multiverse
-          deb [arch=amd64] http://security.ubuntu.com/ubuntu noble-security main restricted universe multiverse
-          EOF
+          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*
 
-          cat <<'EOF' | sudo tee /etc/apt/sources.list.d/arm64.list
+          cat <<'EOF' | sudo tee /etc/apt/sources.list
+          deb [arch=amd64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse
+          deb [arch=amd64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse
+          deb [arch=amd64] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse
+          deb [arch=amd64] http://ports.ubuntu.com/ubuntu-ports noble-backports main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse
